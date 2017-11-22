@@ -1,208 +1,187 @@
 /* eslint-env mocha */
 
-const assert = require('assert')
 
-const util = require('./_util')
-const multer = require('../')
-const stream = require('stream')
-const FormData = require('form-data')
+const util = require('./_util');
+const assert = require('assert');
+const stream = require('stream');
+const multer = require('../');
+const FormData = require('form-data');
+const { promisify } = require('util');
 
-function withLimits (limits, fields) {
-  var storage = multer.memoryStorage()
-  return multer({ storage: storage, limits: limits }).fields(fields)
+function withLimits(limits, fields) {
+    let storage = multer.memoryStorage();
+    return multer({ storage, limits }).fields(fields);
 }
 
 describe('Error Handling', () => {
-  it('should respect parts limit', (done) => {
-    var form = new FormData()
-    var parser = withLimits({ parts: 1 }, [
-      { name: 'small0', maxCount: 1 }
-    ])
+    it('should respect parts limit', async () => {
+        let form = new FormData();
+        let parser = withLimits({ parts: 1 }, [
+            { name: 'small0', maxCount: 1 }
+        ]);
 
-    form.append('field0', 'BOOM!')
-    form.append('small0', util.file('small0.dat'))
+        form.append('field0', 'BOOM!');
+        form.append('small0', util.file('small0.dat'));
 
-    util.submitForm(parser, form, (err, req) => {
-      assert.equal(err.code, 'LIMIT_PART_COUNT')
-      done()
-    })
-  })
+        let {req,err} = await util.submitForm(parser, form);
+        assert.equal(err.code, 'LIMIT_PART_COUNT');
+    });
 
-  it('should respect file size limit', (done) => {
-    var form = new FormData()
-    var parser = withLimits({ fileSize: 1500 }, [
-      { name: 'tiny0', maxCount: 1 },
-      { name: 'small0', maxCount: 1 }
-    ])
+    it('should respect file size limit', async () => {
+        let form = new FormData();
+        let parser = withLimits({ fileSize: 1500 }, [
+            { name: 'tiny0', maxCount: 1 },
+            { name: 'small0', maxCount: 1 }
+        ]);
 
-    form.append('tiny0', util.file('tiny0.dat'))
-    form.append('small0', util.file('small0.dat'))
+        form.append('tiny0', util.file('tiny0.dat'));
+        form.append('small0', util.file('small0.dat'));
 
-    util.submitForm(parser, form, (err, req) => {
-      assert.equal(err.code, 'LIMIT_FILE_SIZE')
-      assert.equal(err.field, 'small0')
-      done()
-    })
-  })
+        let {req,err} = await util.submitForm(parser, form);
+        assert.equal(err.code, 'LIMIT_FILE_SIZE');
+        assert.equal(err.field, 'small0');
+    });
 
-  it('should respect file count limit', (done) => {
-    var form = new FormData()
-    var parser = withLimits({ files: 1 }, [
-      { name: 'small0', maxCount: 1 },
-      { name: 'small1', maxCount: 1 }
-    ])
+    it('should respect file count limit', async () => {
+        let form = new FormData();
+        let parser = withLimits({ files: 1 }, [
+            { name: 'small0', maxCount: 1 },
+            { name: 'small1', maxCount: 1 }
+        ]);
 
-    form.append('small0', util.file('small0.dat'))
-    form.append('small1', util.file('small1.dat'))
+        form.append('small0', util.file('small0.dat'));
+        form.append('small1', util.file('small1.dat'));
 
-    util.submitForm(parser, form, (err, req) => {
-      assert.equal(err.code, 'LIMIT_FILE_COUNT')
-      done()
-    })
-  })
+        let {err,res} = await util.submitForm(parser, form);
+        assert.equal(err.code, 'LIMIT_FILE_COUNT');
+    });
 
-  it('should respect file key limit', (done) => {
-    var form = new FormData()
-    var parser = withLimits({ fieldNameSize: 4 }, [
-      { name: 'small0', maxCount: 1 }
-    ])
+    it('should respect file key limit', async () => {
+        let form = new FormData();
+        let parser = withLimits({ fieldNameSize: 4 }, [
+            { name: 'small0', maxCount: 1 }
+        ]);
 
-    form.append('small0', util.file('small0.dat'))
+        form.append('small0', util.file('small0.dat'));
 
-    util.submitForm(parser, form, (err, req) => {
-      assert.equal(err.code, 'LIMIT_FIELD_KEY')
-      done()
-    })
-  })
+        let {req,err} = await util.submitForm(parser, form);
+        assert.equal(err.code, 'LIMIT_FIELD_KEY');
+    });
 
-  it('should respect field key limit', (done) => {
-    var form = new FormData()
-    var parser = withLimits({ fieldNameSize: 4 }, [])
+    it('should respect field key limit', async () => {
+        let form = new FormData();
+        let parser = withLimits({ fieldNameSize: 4 }, []);
 
-    form.append('ok', 'SMILE')
-    form.append('blowup', 'BOOM!')
+        form.append('ok', 'SMILE');
+        form.append('blowup', 'BOOM!');
 
-    util.submitForm(parser, form, (err, req) => {
-      assert.equal(err.code, 'LIMIT_FIELD_KEY')
-      done()
-    })
-  })
+        let {req,err} = await util.submitForm(parser, form);
+        assert.equal(err.code, 'LIMIT_FIELD_KEY');
+    });
 
-  it('should respect field value limit', (done) => {
-    var form = new FormData()
-    var parser = withLimits({ fieldSize: 16 }, [])
+    it('should respect field value limit', async () => {
+        let form = new FormData();
+        let parser = withLimits({ fieldSize: 16 }, []);
 
-    form.append('field0', 'This is okay')
-    form.append('field1', 'This will make the parser explode')
+        form.append('field0', 'This is okay');
+        form.append('field1', 'This will make the parser explode');
 
-    util.submitForm(parser, form, (err, req) => {
-      assert.equal(err.code, 'LIMIT_FIELD_VALUE')
-      assert.equal(err.field, 'field1')
-      done()
-    })
-  })
+        let {req,err} = await util.submitForm(parser, form);
+        assert.equal(err.code, 'LIMIT_FIELD_VALUE');
+        assert.equal(err.field, 'field1');
+    });
 
-  it('should respect field count limit', (done) => {
-    var form = new FormData()
-    var parser = withLimits({ fields: 1 }, [])
+    it('should respect field count limit', async () => {
+        let form = new FormData();
+        let parser = withLimits({ fields: 1 }, []);
 
-    form.append('field0', 'BOOM!')
-    form.append('field1', 'BOOM!')
+        form.append('field0', 'BOOM!');
+        form.append('field1', 'BOOM!');
 
-    util.submitForm(parser, form, (err, req) => {
-      assert.equal(err.code, 'LIMIT_FIELD_COUNT')
-      done()
-    })
-  })
+        let {req,err} = await util.submitForm(parser, form);
+        assert.equal(err.code, 'LIMIT_FIELD_COUNT');
+    });
 
-  it('should respect fields given', (done) => {
-    var form = new FormData()
-    var parser = withLimits(undefined, [
-      { name: 'wrongname', maxCount: 1 }
-    ])
+    it('should respect fields given', async () => {
+        let form = new FormData();
+        let parser = withLimits(undefined, [
+            { name: 'wrongname', maxCount: 1 }
+        ]);
 
-    form.append('small0', util.file('small0.dat'))
+        form.append('small0', util.file('small0.dat'));
 
-    util.submitForm(parser, form, (err, req) => {
-      assert.equal(err.code, 'LIMIT_UNEXPECTED_FILE')
-      assert.equal(err.field, 'small0')
-      done()
-    })
-  })
+        let {req,err} = await util.submitForm(parser, form);
+        assert.equal(err.code, 'LIMIT_UNEXPECTED_FILE');
+        assert.equal(err.field, 'small0');
+    });
 
-  it('should report errors from storage engines', (done) => {
-    var storage = multer.memoryStorage()
+    it('should report errors from storage engines', async () => {
+        let storage = multer.memoryStorage();
 
-    storage._removeFile = function _removeFile (req, file, cb) {
-      var err = new Error('Test error')
-      err.code = 'TEST'
-      cb(err)
-    }
+        storage._removeFile = function _removeFile(req, file, cb) {
+            let err = new Error('Test error');
+            err.code = 'TEST';
+            cb(err);
+        };
 
-    var form = new FormData()
-    var upload = multer({ storage: storage })
-    var parser = upload.single('tiny0')
+        let form = new FormData();
+        let upload = multer({ storage: storage });
+        let parser = upload.single('tiny0');
 
-    form.append('tiny0', util.file('tiny0.dat'))
-    form.append('small0', util.file('small0.dat'))
+        form.append('tiny0', util.file('tiny0.dat'));
+        form.append('small0', util.file('small0.dat'));
 
-    util.submitForm(parser, form, (err, req) => {
-      assert.equal(err.code, 'LIMIT_UNEXPECTED_FILE')
-      assert.equal(err.field, 'small0')
+        let {req,err} = await util.submitForm(parser, form);
+        assert.equal(err.code, 'LIMIT_UNEXPECTED_FILE');
+        assert.equal(err.field, 'small0');
 
-      assert.equal(err.storageErrors.length, 1)
-      assert.equal(err.storageErrors[0].code, 'TEST')
-      assert.equal(err.storageErrors[0].field, 'tiny0')
-      assert.equal(err.storageErrors[0].file, req.file)
+        assert.equal(err.storageErrors.length, 1);
+        assert.equal(err.storageErrors[0].code, 'TEST');
+        assert.equal(err.storageErrors[0].field, 'tiny0');
+        assert.equal(err.storageErrors[0].file, req.file);
+    });
 
-      done()
-    })
-  })
+    it('should report errors from busboy constructor', async () => {
+        let req = new stream.PassThrough();
+        let storage = multer.memoryStorage();
+        let upload = multer({ storage }).single('tiny0');
+        let body = 'test';
 
-  it('should report errors from busboy constructor', (done) => {
-    var req = new stream.PassThrough()
-    var storage = multer.memoryStorage()
-    var upload = multer({ storage: storage }).single('tiny0')
-    var body = 'test'
+        req.headers = {
+            'content-type': 'multipart/form-data',
+            'content-length': body.length
+        };
 
-    req.headers = {
-      'content-type': 'multipart/form-data',
-      'content-length': body.length
-    }
+        req.end(body);
 
-    req.end(body)
+        try {
+            await upload({ req }, () => { });
+        } catch (e) {
+            assert.equal(e.message, 'Multipart: Boundary not found');
+        }
+    });
 
-    upload({ req }, () => {})
-    .catch(err => {
-      assert.equal(err.message, 'Multipart: Boundary not found')
-      done()
-    })
-  })
+    it('should report errors from busboy parsing', async () => {
+        let req = new stream.PassThrough();
+        let storage = multer.memoryStorage();
+        let upload = multer({ storage }).single('tiny0');
+        let boundary = 'AaB03x';
+        let body = `--${boundary}\r\n`+
+            `Content-Disposition: form-data; name="tiny0"; filename="test.txt"\r\n` +
+            `Content-Type: text/plain\r\n` +
+            `\r\n` +
+            `test without end boundary`;
 
-  it('should report errors from busboy parsing', (done) => {
-    var req = new stream.PassThrough()
-    var storage = multer.memoryStorage()
-    var upload = multer({ storage: storage }).single('tiny0')
-    var boundary = 'AaB03x'
-    var body = [
-      '--' + boundary,
-      'Content-Disposition: form-data; name="tiny0"; filename="test.txt"',
-      'Content-Type: text/plain',
-      '',
-      'test without end boundary'
-    ].join('\r\n')
+        req.headers = {
+            'content-type': `multipart/form-data; boundary=${boundary}`,
+            'content-length': body.length
+        };
 
-    req.headers = {
-      'content-type': 'multipart/form-data; boundary=' + boundary,
-      'content-length': body.length
-    }
-
-    req.end(body)
-
-    upload({ req }, () => {})
-    .catch(err => {
-      assert.equal(err.message, 'Unexpected end of multipart data')
-      done()
-    })
-  })
-})
+        req.end(body);
+        try {
+            await upload({ req }, () => { });
+        } catch (e) {
+            assert.equal(e.message, 'Unexpected end of multipart data');
+        }
+    });
+});

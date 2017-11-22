@@ -1,57 +1,53 @@
 /* eslint-env mocha */
 
-const assert = require('assert')
+const util = require('./_util');
+const assert = require('assert');
+const multer = require('../');
+const FormData = require('form-data');
 
-const util = require('./_util')
-const multer = require('../')
-const FormData = require('form-data')
 
 describe('Reuse Middleware', () => {
-  var parser
+    let parser;
 
-  before((done) => {
-    parser = multer().array('them-files')
-    done()
-  })
+    before(async () => {
+        parser = multer().array('them-files');
+    });
 
-  it('should accept multiple requests', (done) => {
-    var pending = 8
+    it('should accept multiple requests', async () => {
+        let pending = 8;
 
-    function submitData (fileCount) {
-      var form = new FormData()
+        async function submitData(fileCount) {
+            let form = new FormData();
 
-      form.append('name', 'Multer')
-      form.append('files', '' + fileCount)
+            form.append('name', 'Multer');
+            form.append('files', '' + fileCount);
 
-      for (var i = 0; i < fileCount; i++) {
-        form.append('them-files', util.file('small0.dat'))
-      }
+            for (let i = 0; i < fileCount; i++) {
+                form.append('them-files', util.file('small0.dat'));
+            }
 
-      util.submitForm(parser, form, (err, req) => {
-        assert.ifError(err)
+            let { err, req } = await util.submitForm(parser, form);
+            assert.ifError(err);
 
-        assert.equal(req.body.name, 'Multer')
-        assert.equal(req.body.files, '' + fileCount)
-        assert.equal(req.files.length, fileCount)
+            assert.equal(req.body.name, 'Multer');
+            assert.equal(req.body.files, '' + fileCount);
+            assert.equal(req.files.length, fileCount);
 
-        req.files.forEach((file) => {
-          assert.equal(file.fieldname, 'them-files')
-          assert.equal(file.originalname, 'small0.dat')
-          assert.equal(file.size, 1778)
-          assert.equal(file.buffer.length, 1778)
-        })
-
-        if (--pending === 0) done()
-      })
-    }
-
-    submitData(9)
-    submitData(1)
-    submitData(5)
-    submitData(7)
-    submitData(2)
-    submitData(8)
-    submitData(3)
-    submitData(4)
-  })
-})
+            for (let file of req.files) {
+                assert.equal(file.fieldname, 'them-files');
+                assert.equal(file.originalname, 'small0.dat');
+                assert.equal(file.size, 1803);
+                assert.equal(file.buffer.length, 1803);
+            }
+        }
+        
+        await submitData(9);
+        await submitData(1);
+        await submitData(5);
+        await submitData(7);
+        await submitData(2);
+        await submitData(8);
+        await submitData(3);
+        await submitData(4);
+    });
+});
