@@ -6,8 +6,7 @@
 > Uses Proxy instead of a plain function wrapper.\
 > Tests are from [koa-multer][koa-multer], but updated to modern node syntax.
 
-#### Made for Nodejs v8 (untested against v6 --harmony, but might work)
-
+#### Made with Nodejs v8 (untested against v6 --harmony, but might work)
 
 [![NPM version][npm-img]][npm-url]
 [![License][license-img]][license-url]
@@ -37,6 +36,9 @@ router.post('/profile/photos', upload.array('list'));
 app.use(router.routes());
 app.listen(3000);
 ```
+Files are available via `ctx.req.files` or `ctx.request.files`.
+If there is only one file, remove the plurality. (eg. `ctx.req.file`)
+Any text fields are available via `ctx.req.body` or `ctx.request.body`.
 
 ## License
 
