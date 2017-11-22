@@ -1,6 +1,6 @@
 {
   "name": "kuma-multer",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Middleware for handling `multipart/form-data` for koa.",
   "author": "Techborn <unborntech@gmail.com>",
   "license": "MIT",
