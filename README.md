@@ -36,8 +36,8 @@ router.post('/profile/photos', upload.array('list'));
 app.use(router.routes());
 app.listen(3000);
 ```
-Files are available via `ctx.req.files` or `ctx.request.files`.
-If there is only one file, remove the plurality. (eg. `ctx.req.file`)
+Files are available via `ctx.req.files` or `ctx.request.files`.\
+If there is only one file, remove the plurality. (eg. `ctx.req.file`)\
 Any text fields are available via `ctx.req.body` or `ctx.request.body`.
 
 ## License
